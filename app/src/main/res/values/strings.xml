@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">uMundo IM</string>
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_user_name">User Name</string>
+</resources>
