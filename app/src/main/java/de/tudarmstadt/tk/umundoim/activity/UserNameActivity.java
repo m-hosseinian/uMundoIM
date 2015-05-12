@@ -28,7 +28,7 @@ public class UserNameActivity extends ActionBarActivity {
             @Override
             public void onClick(View v) {
                 if (userNameEditText.getText() != null && userNameEditText.getText().length() != 0) {
-                    Constants.USER_NAME = userNameEditText.getText().toString();
+                    Constants.userName = userNameEditText.getText().toString();
 
                     new Thread(){
                         @Override

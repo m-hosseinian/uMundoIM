@@ -3,17 +3,19 @@
     package="de.tudarmstadt.tk.umundoim" >
 
     <uses-sdk
-        android:minSdkVersion="11"
-        android:targetSdkVersion="11" />
+
+        android:minSdkVersion="14"
+        android:targetSdkVersion="14" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="18" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="18" />
 
     <application
@@ -22,20 +24,24 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name="de.tudarmstadt.tk.umundoim.activity.ChatMainActivity"
+            android:name=".activity.ChatMainActivity"
             android:label="@string/app_name"
             android:windowSoftInputMode="adjustResize" >
-
         </activity>
         <activity
-            android:name="de.tudarmstadt.tk.umundoim.activity.UserNameActivity"
-            android:windowSoftInputMode="adjustResize"
-            android:label="@string/app_name" >
+
+            android:name=".activity.UserNameActivity"
+            android:label="@string/app_name"
+            android:windowSoftInputMode="adjustResize" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name=".activity.SubscriptionListActivity"
+            android:label="@string/title_activity_subscription_list" >
         </activity>
     </application>
 

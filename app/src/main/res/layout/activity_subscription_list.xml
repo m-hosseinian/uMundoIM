@@ -1,0 +1,90 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    tools:context="de.tudarmstadt.tk.umundoim.activity.SubscriptionListActivity">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true">
+
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TK3"
+            android:id="@+id/TK3"
+            android:layout_alignParentTop="true"
+            android:showText="true"
+            android:layout_alignParentLeft="true" />
+
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SEDC"
+            android:id="@+id/SEDC"
+            android:layout_below="@+id/switch1"
+            android:layout_centerHorizontal="true"
+            android:showText="true" />
+
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TK1"
+            android:id="@+id/TK1"
+            android:layout_below="@+id/switch4"
+            android:layout_centerHorizontal="true"
+            android:showText="true" />
+
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="KN2"
+            android:id="@+id/KN2"
+            android:showText="true"
+            android:layout_below="@+id/SEDC"
+            android:layout_alignLeft="@+id/SEDC"
+            android:layout_marginTop="30dp" />
+
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MENSA"
+            android:id="@+id/MENSA"
+            android:layout_below="@+id/switch2"
+            android:layout_centerHorizontal="true"
+            android:showText="true" />
+
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PILOTY"
+            android:id="@+id/PILOTY"
+            android:layout_below="@+id/switch3"
+            android:layout_centerHorizontal="true"
+            android:showText="true" />
+
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CRYPTO"
+            android:id="@+id/CRYPTO"
+            android:layout_below="@+id/switch5"
+            android:layout_centerHorizontal="true"
+            android:showText="true" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save"
+            android:id="@+id/submitSubscriptions"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentLeft="true"
+            android:layout_marginBottom="132dp" />
+    </LinearLayout>
+
+</RelativeLayout>

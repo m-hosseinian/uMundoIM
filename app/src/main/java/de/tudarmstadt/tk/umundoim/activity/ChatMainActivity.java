@@ -1,6 +1,7 @@
 package de.tudarmstadt.tk.umundoim.activity;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Bundle;
@@ -8,15 +9,22 @@ import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.EditText;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+
 import android.util.Log;
 
 import de.tudarmstadt.tk.umundoim.R;
 import de.tudarmstadt.tk.umundoim.constant.Constants;
+import de.tudarmstadt.tk.umundoim.datasrtucture.IMSubscription;
 
 import org.umundo.core.Discovery;
 import org.umundo.core.Discovery.DiscoveryType;
@@ -31,21 +39,24 @@ import org.umundo.core.SubscriberStub;
 
 public class ChatMainActivity extends ActionBarActivity {
 
-    public static String TAG = "ChatMainActivity";
+    private static String TAG = "ChatMainActivity";
 
-    public ScrollView chatScrollView;
-    public String trend = "coreChat";
-    public Discovery disc;
-    public Node chatNode;
-    public Subscriber chatSub;
-    public Publisher chatPub;
+    private ScrollView chatScrollView;
+    private String trend;
+    private Discovery disc;
+    private Node chatNode;
+    private Subscriber chatSub;
+    private Publisher chatPub;
+    private IMSubscription subscription;
 
-    public String userName;
-    public HashMap<String, String> participants = new HashMap<>();
+    private HashMap<String, String> participants = new HashMap<>();
 
-    TextView chatTextView;
-    TextView messageEditText;
-    Button sendButton;
+
+    private ArrayAdapter<String> trendsDropDownAdapter;
+    private TextView chatTextView;
+    private TextView messageEditText;
+    private Button sendButton;
+    private Spinner subSelection;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,24 +66,17 @@ public class ChatMainActivity extends ActionBarActivity {
         if (wifi != null) {
             MulticastLock mcLock = wifi.createMulticastLock("mylock");
             mcLock.acquire();
-            // mcLock.release();
         } else {
             Log.v("android-umundo", "Cannot get WifiManager");
         }
 
-        userName = Constants.USER_NAME;
-//		System.loadLibrary("umundoNativeJava");
         System.loadLibrary("umundoNativeJava_d");
+
         disc = new Discovery(DiscoveryType.MDNS);
         chatNode = new Node();
-        chatSub = new Subscriber(trend);
-        chatSub.setReceiver(new ChatReceiver());
-        chatPub = new Publisher(trend);
         disc.add(chatNode);
 
-        chatPub.setGreeter(new ChatGreeter(userName, trend));
-        chatNode.addPublisher(chatPub);
-        chatNode.addSubscriber(chatSub);
+        Constants.trendsDropDownList.add("coreChat");
 
         setContentView(R.layout.activity_chat_main);
         chatTextView = (TextView) findViewById(R.id.textViewChat);
@@ -80,10 +84,26 @@ public class ChatMainActivity extends ActionBarActivity {
         sendButton = (Button) findViewById(R.id.buttonSend);
         chatScrollView = (ScrollView) findViewById(R.id.scrollViewChat);
 
+        subSelection = (Spinner) findViewById(R.id.subscriptions_adapter);
+        trendsDropDownAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, Constants.trendsDropDownList);
+
+
         chatTextView.setText(chatTextView.getText().toString() +
-                Constants.USER_NAME + "!" +
+                Constants.userName + "!" +
                 "\n");
 
+        subSelection.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                trend = subSelection.getSelectedItem().toString();
+                Log.i(TAG, "current trend: " + trend);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
         initButtons();
     }
 
@@ -97,10 +117,10 @@ public class ChatMainActivity extends ActionBarActivity {
                     public void run() {
                         if (messageEditText.getText() != null && messageEditText.getText().length() != 0) {
                             chatTextView.setText(chatTextView.getText().toString() +
-                                    Constants.USER_NAME + ": " + messageEditText.getText() +
+                                    Constants.userName + "@" + trend + ": " + messageEditText.getText() +
                                     "\n");
                             Message msg = new Message();
-                            msg.putMeta("userName", userName);
+                            msg.putMeta("userName", Constants.userName);
                             msg.putMeta("trend", trend);
                             msg.putMeta("chatMsg", messageEditText.getText().toString());
                             chatPub.send(msg);
@@ -112,13 +132,10 @@ public class ChatMainActivity extends ActionBarActivity {
                     }
                 });
             }
-
-
         });
-
     }
 
-    class ChatReceiver extends Receiver {
+    public class ChatReceiver extends Receiver {
 
         private Message lmsg;
         @Override
@@ -191,10 +208,31 @@ public class ChatMainActivity extends ActionBarActivity {
     }
 
     @Override
-    protected void onStop() {
+    protected void onDestroy() {
         chatNode.removePublisher(chatPub);
         chatNode.removeSubscriber(chatSub);
-        super.onStop();
+        super.onDestroy();
+    }
+
+    @Override
+    protected void onResume() {
+        ArrayList<String> tempSet = new ArrayList<>(Constants.trendsDropDownList); // to avoid java.util.ConcurrentModificationException
+        for(String newTrend : tempSet) {
+            if (!Constants.trends.keySet().contains(newTrend)) {
+                subscribeToTrend(newTrend);
+            }
+        }
+        ArrayList<String> tempList = new ArrayList<>(Constants.trends.keySet());
+        for (String trend : tempList) {
+            if (!Constants.trendsDropDownList.contains(trend)) {
+                unsubscribeFromTrend(trend);
+            }
+        }
+        for (String s : Constants.trendsDropDownList) {
+            Log.i(TAG, "drop down list item: " + s);
+        }
+        subSelection.setAdapter(trendsDropDownAdapter);
+        super.onResume();
     }
 
     @Override
@@ -206,16 +244,37 @@ public class ChatMainActivity extends ActionBarActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        if (id == R.id.subscription_lists) {
+            startActivity(new Intent(this, SubscriptionListActivity.class));
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    public void subscribeToTrend(String newTrend) {
+        chatSub = new Subscriber(newTrend);
+        chatSub.setReceiver(new ChatReceiver());
+        chatPub = new Publisher(newTrend);
+        chatPub.setGreeter(new ChatGreeter(Constants.userName, newTrend));
+        chatNode.addPublisher(chatPub);
+        chatNode.addSubscriber(chatSub);
+        subscription = new IMSubscription(chatPub, chatSub);
+        Constants.trends.put(newTrend, subscription);
+        Log.i("Subscriber", "Successfully subscribed to \"" + newTrend + "\"");
+
+    }
+
+    public void unsubscribeFromTrend (String trend) {
+        subscription = Constants.trends.get(trend);
+        if (subscription == null) {
+            Log.w(TAG, "unsubscribing from not subsctribed trend:" + trend );
+        } else {
+            chatNode.removePublisher(subscription.getPublisher());
+            chatNode.removeSubscriber(subscription.getSubscriber());
+            Constants.trends.remove(trend);
+            Log.i("Publisher", "Successfully unsubscribed from \"" + trend + "\"");
+        }
     }
 }
