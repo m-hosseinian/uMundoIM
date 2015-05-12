@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/scrollViewChat"
-        android:layout_weight="0.9"
+        android:layout_weight="0.72"
         android:fillViewport="false">
 
         <TextView
@@ -25,17 +25,22 @@
             android:focusable="false"
             android:gravity="top"/>
     </ScrollView>
+
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="52dp"
         android:layout_weight="0.1">
 
+        <Spinner
+            android:layout_width="74dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/subscriptions_adapter" />
+
         <EditText
-            android:layout_width="match_parent"
+            android:layout_width="202dp"
             android:layout_height="wrap_content"
             android:id="@+id/textViewMessage"
-            android:layout_weight="0.2"
             android:focusable="true" />
 
         <Button

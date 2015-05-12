@@ -1,6 +1,7 @@
 package de.tudarmstadt.tk.umundoim.activity;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Bundle;
@@ -8,14 +9,23 @@ import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.EditText;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
 import android.util.Log;
 
 import de.tudarmstadt.tk.umundoim.R;
+import de.tudarmstadt.tk.umundoim.SubscriptionListActivity;
 import de.tudarmstadt.tk.umundoim.constant.Constants;
 
 import org.umundo.core.Discovery;
@@ -42,10 +52,13 @@ public class ChatMainActivity extends ActionBarActivity {
 
     public String userName;
     public HashMap<String, String> participants = new HashMap<>();
-
+    public HashMap<String,Boolean> trends = new HashMap<>();
+    public ArrayList<String> trendsDropDownList = new ArrayList<>();
+    public ArrayAdapter<String> trendsDropDownAdapter;// = new ArrayAdapter<String>(this,android.R.layout.,trendsDropDownList);
     TextView chatTextView;
     TextView messageEditText;
     Button sendButton;
+    Spinner subSelection;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,10 +72,14 @@ public class ChatMainActivity extends ActionBarActivity {
         } else {
             Log.v("android-umundo", "Cannot get WifiManager");
         }
+        trends = new Constants().Trends;
+        trends.put(trend, true);
+        trendsDropDownList.add(trend);
 
         userName = Constants.USER_NAME;
 //		System.loadLibrary("umundoNativeJava");
         System.loadLibrary("umundoNativeJava_d");
+
         disc = new Discovery(DiscoveryType.MDNS);
         chatNode = new Node();
         chatSub = new Subscriber(trend);
@@ -80,11 +97,46 @@ public class ChatMainActivity extends ActionBarActivity {
         sendButton = (Button) findViewById(R.id.buttonSend);
         chatScrollView = (ScrollView) findViewById(R.id.scrollViewChat);
 
+        subSelection = (Spinner) findViewById(R.id.subscriptions_adapter);
+        trendsDropDownAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, trendsDropDownList);
+        subSelection.setAdapter(trendsDropDownAdapter);
+
         chatTextView.setText(chatTextView.getText().toString() +
                 Constants.USER_NAME + "!" +
                 "\n");
 
+        subSelection.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String tempTrend = String.valueOf(subSelection.getSelectedItem());
+                trend = tempTrend;
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
         initButtons();
+    }
+
+    private void subscribeToTrend(String newTrend) {
+        Subscriber newSub  = new Subscriber(newTrend);
+        newSub.setReceiver(new ChatReceiver());
+        chatNode.addSubscriber(newSub);
+        trends.put(newTrend, true);
+        trendsDropDownList.add(newTrend);
+        Log.i("Subscriber", "Successfully subscribed to " + newTrend);
+
+    }
+
+    private void unsubscribeFromTrend (String newTrend) {
+        Publisher pub = new Publisher(newTrend);
+        pub.setGreeter(new ChatGreeter(userName, newTrend));
+        chatNode.addPublisher(pub);
+        trends.put(newTrend, false);
+        trendsDropDownList.remove(newTrend);
+        Log.i("Publisher", "Succesfully added the publisher " + newTrend);
     }
 
     void initButtons() {
@@ -180,9 +232,9 @@ public class ChatMainActivity extends ActionBarActivity {
                                 participants.get(lsubStub.getUUID()) + " left the chat" +
                                 "\n");
                     } else {
-                        Log.w(TAG, "An unknown user left the chat: " + lsubStub.getUUID());
+                        Log.w(TAG, "An unknown user left chat: " + lsubStub.getUUID());
                         chatTextView.setText(chatTextView.getText().toString() +
-                                "An unknown user left the chat: " + lsubStub.getUUID() +
+                                "An unknown user left chat: " + lsubStub.getUUID() +
                                 "\n");
                     }
                 }
@@ -201,6 +253,7 @@ public class ChatMainActivity extends ActionBarActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_chat_main, menu);
+        getMenuInflater().inflate(R.menu.menu_subscription_list, menu);
         return true;
     }
 
@@ -215,7 +268,29 @@ public class ChatMainActivity extends ActionBarActivity {
         if (id == R.id.action_settings) {
             return true;
         }
+        else if (id == R.id.subscription_lists) {
+            Intent subsIntent = new Intent(this, SubscriptionListActivity.class);
+            subsIntent.putExtra("trends", trends);
+            startActivityForResult(subsIntent,100);
+        }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        if (requestCode == 100) {
+            HashMap<String,Boolean> newTrends = (HashMap<String,Boolean>) intent.getSerializableExtra("trends");
+            Iterator tempIterator = newTrends.entrySet().iterator();
+            while ( tempIterator.hasNext()) {
+                Map.Entry<String,Boolean> pair = (Map.Entry<String,Boolean>) tempIterator.next();
+                if (pair.getValue() != trends.get(pair.getKey())) {
+                    if (pair.getValue())
+                        subscribeToTrend(pair.getKey().toString());
+                    else
+                        unsubscribeFromTrend(pair.getKey().toString());
+                }
+
+            }
+        }
     }
 }
