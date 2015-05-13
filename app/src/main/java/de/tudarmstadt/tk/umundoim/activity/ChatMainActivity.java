@@ -43,7 +43,6 @@ public class ChatMainActivity extends ActionBarActivity {
 
     private ScrollView chatScrollView;
     private String trend;
-    private Discovery disc;
     private Node chatNode;
     private Subscriber chatSub;
     private Publisher chatPub;
@@ -72,7 +71,7 @@ public class ChatMainActivity extends ActionBarActivity {
 
         System.loadLibrary("umundoNativeJava_d");
 
-        disc = new Discovery(DiscoveryType.MDNS);
+        Discovery disc = new Discovery(DiscoveryType.MDNS);
         chatNode = new Node();
         disc.add(chatNode);
 
@@ -85,7 +84,7 @@ public class ChatMainActivity extends ActionBarActivity {
         chatScrollView = (ScrollView) findViewById(R.id.scrollViewChat);
 
         subSelection = (Spinner) findViewById(R.id.subscriptions_adapter);
-        trendsDropDownAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, Constants.trendsDropDownList);
+        trendsDropDownAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, Constants.trendsDropDownList);
 
 
         chatTextView.setText(chatTextView.getText().toString() +
@@ -216,20 +215,17 @@ public class ChatMainActivity extends ActionBarActivity {
 
     @Override
     protected void onResume() {
-        ArrayList<String> tempSet = new ArrayList<>(Constants.trendsDropDownList); // to avoid java.util.ConcurrentModificationException
-        for(String newTrend : tempSet) {
+        ArrayList<String> tempList = new ArrayList<>(Constants.trendsDropDownList); // to avoid java.util.ConcurrentModificationException
+        for(String newTrend : tempList) {
             if (!Constants.trends.keySet().contains(newTrend)) {
                 subscribeToTrend(newTrend);
             }
         }
-        ArrayList<String> tempList = new ArrayList<>(Constants.trends.keySet());
+        tempList = new ArrayList<>(Constants.trends.keySet());
         for (String trend : tempList) {
             if (!Constants.trendsDropDownList.contains(trend)) {
                 unsubscribeFromTrend(trend);
             }
-        }
-        for (String s : Constants.trendsDropDownList) {
-            Log.i(TAG, "drop down list item: " + s);
         }
         subSelection.setAdapter(trendsDropDownAdapter);
         super.onResume();
