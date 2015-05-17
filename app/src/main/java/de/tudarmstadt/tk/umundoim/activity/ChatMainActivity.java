@@ -19,6 +19,8 @@ import android.widget.EditText;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 import android.util.Log;
 
@@ -40,13 +42,15 @@ import org.umundo.core.SubscriberStub;
 public class ChatMainActivity extends ActionBarActivity {
 
     private static String TAG = "ChatMainActivity";
+    private static String controlChannel = "CONTROL";
+    private static String CONTROLTAG = "ControlActivity";
 
     private ScrollView chatScrollView;
     private String trend;
     private Discovery disc;
     private Node chatNode;
-    private Subscriber chatSub;
-    private Publisher chatPub;
+    private Subscriber controlSub;
+    private Publisher controlPub;
     private IMSubscription subscription;
 
     private HashMap<String, String> participants = new HashMap<>();
@@ -58,6 +62,8 @@ public class ChatMainActivity extends ActionBarActivity {
     private Button sendButton;
     private Spinner subSelection;
 
+    //TODO bug1: the creator of the new trend can not unsubscribe
+    // TODO bug2: trends do not sync with the new user who joins
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -104,6 +110,23 @@ public class ChatMainActivity extends ActionBarActivity {
 
             }
         });
+        /**
+         * Create and manage control channel for commands
+         */
+        controlPub = new Publisher(controlChannel);
+        controlSub = new Subscriber(controlChannel);
+        controlSub.setReceiver(new ControlReceiver());
+        chatNode.addPublisher(controlPub);
+        chatNode.addSubscriber(controlSub);
+
+        /**
+         * Broadcast new user present in order to receive updated trend lists
+         */
+        Message controlMsg = new Message();
+        controlMsg.putMeta("newUser",Constants.userName);
+        controlPub.waitForSubscribers(1);
+        controlPub.send(controlMsg);
+
         initButtons();
     }
 
@@ -123,7 +146,9 @@ public class ChatMainActivity extends ActionBarActivity {
                             msg.putMeta("userName", Constants.userName);
                             msg.putMeta("trend", trend);
                             msg.putMeta("chatMsg", messageEditText.getText().toString());
-                            chatPub.send(msg);
+
+                            Constants.subscriptionMap.get(trend).getPublisher().send(msg);
+                            //chatPub.send(msg);
                             messageEditText.setText("");
                         } else {
                             Log.w(TAG, "empty message.");
@@ -165,6 +190,51 @@ public class ChatMainActivity extends ActionBarActivity {
         }
     }
 
+    public class ControlReceiver extends  Receiver {
+
+        private Message controlMessage;
+
+        @Override
+        public void  receive(Message msg) {
+            controlMessage = msg;
+            HashMap<String,String> metas = msg.getMeta();
+            Log.i(CONTROLTAG,"We got a new control message;will decide based on its metas");
+            if ( metas.containsKey("newTrend")){
+                Constants.subscriptionStatus.put( controlMessage.getMeta("newTrend") , false );
+                Log.i(CONTROLTAG, "new Trend was added by other users as: "+ controlMessage.getMeta("newTrend"));
+
+            }
+            /**
+             * We respond to the new user announcing herself into the network by giving her all our subscribed channels
+             */
+            else if (metas.containsKey("newUser")) {
+                Log.i(CONTROLTAG, "New User detected ... sending her all the new trends");
+                Iterator<Map.Entry<String,Boolean>> iterator = Constants.subscriptionStatus.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<String,Boolean> pair = iterator.next();
+                    if ( pair.getValue()) {
+                        Message message = new Message();
+                        message.putMeta("updatedTrends",msg.getMeta("newUser"));
+                        message.putMeta("channel",pair.getKey() );
+                        controlPub.send(message);
+                        Log.i(CONTROLTAG, "New trend:  "+ pair.getValue() + " was sent to the new user");
+                    }
+                }
+            }
+            /**
+             * We have received the updated trends from other users;if it is signed for us then we use it
+             */
+            else if (metas.containsKey("updatedTrends")) {
+                Log.i(CONTROLTAG, "We received updated trends, lets check to see if they are ours to store?");
+                if (Constants.userName.equals(controlMessage.getMeta("updatedTrends"))) {
+                    if (!Constants.subscriptionStatus.containsKey(controlMessage.getMeta("channel"))) {
+                        Log.i(CONTROLTAG,"Putting new trends in the database "+ controlMessage.getMeta("channel"));
+                        Constants.subscriptionStatus.put(controlMessage.getMeta("channel"), false);
+                    }
+                }
+            }
+        }
+    }
     class ChatGreeter extends Greeter {
         public String userName;
         public String trend;
@@ -180,7 +250,7 @@ public class ChatMainActivity extends ActionBarActivity {
             Message greeting = Message.toSubscriber(subStub.getUUID());
             greeting.putMeta("participant", userName);
             greeting.putMeta("trend", trend);
-            greeting.putMeta("subscriber", chatSub.getUUID());
+            greeting.putMeta("subscriber", subStub.getUUID());
             pub.send(greeting);
         }
 
@@ -209,8 +279,9 @@ public class ChatMainActivity extends ActionBarActivity {
 
     @Override
     protected void onDestroy() {
-        chatNode.removePublisher(chatPub);
-        chatNode.removeSubscriber(chatSub);
+        //TODO: do a loop over subscriptions and remove all publishers
+        //chatNode.removePublisher(chatPub);
+        //chatNode.removeSubscriber(chatSub);
         super.onDestroy();
     }
 
@@ -218,11 +289,11 @@ public class ChatMainActivity extends ActionBarActivity {
     protected void onResume() {
         ArrayList<String> tempSet = new ArrayList<>(Constants.trendsDropDownList); // to avoid java.util.ConcurrentModificationException
         for(String newTrend : tempSet) {
-            if (!Constants.trends.keySet().contains(newTrend)) {
+            if (!Constants.subscriptionMap.keySet().contains(newTrend)) {
                 subscribeToTrend(newTrend);
             }
         }
-        ArrayList<String> tempList = new ArrayList<>(Constants.trends.keySet());
+        ArrayList<String> tempList = new ArrayList<>(Constants.subscriptionMap.keySet());
         for (String trend : tempList) {
             if (!Constants.trendsDropDownList.contains(trend)) {
                 unsubscribeFromTrend(trend);
@@ -231,6 +302,15 @@ public class ChatMainActivity extends ActionBarActivity {
         for (String s : Constants.trendsDropDownList) {
             Log.i(TAG, "drop down list item: " + s);
         }
+        /**
+         * In case the user added a new Trend; we let everyone know of it
+         */
+        for (String newTrend: Constants.newTrends) {
+            subscribeToTrend(newTrend);
+            broadcastTrend(newTrend);
+        }
+        Constants.newTrends = new ArrayList<>(); //Empty the list
+
         subSelection.setAdapter(trendsDropDownAdapter);
         super.onResume();
     }
@@ -254,27 +334,36 @@ public class ChatMainActivity extends ActionBarActivity {
     }
 
     public void subscribeToTrend(String newTrend) {
-        chatSub = new Subscriber(newTrend);
+        Subscriber chatSub = new Subscriber(newTrend);
         chatSub.setReceiver(new ChatReceiver());
-        chatPub = new Publisher(newTrend);
+        Publisher chatPub = new Publisher(newTrend);
         chatPub.setGreeter(new ChatGreeter(Constants.userName, newTrend));
         chatNode.addPublisher(chatPub);
         chatNode.addSubscriber(chatSub);
         subscription = new IMSubscription(chatPub, chatSub);
-        Constants.trends.put(newTrend, subscription);
+        Constants.subscriptionStatus.put(newTrend,true);
+        Constants.subscriptionMap.put(newTrend, subscription);
         Log.i("Subscriber", "Successfully subscribed to \"" + newTrend + "\"");
 
     }
 
     public void unsubscribeFromTrend (String trend) {
-        subscription = Constants.trends.get(trend);
+        subscription = Constants.subscriptionMap.get(trend);
         if (subscription == null) {
             Log.w(TAG, "unsubscribing from not subsctribed trend:" + trend );
         } else {
             chatNode.removePublisher(subscription.getPublisher());
             chatNode.removeSubscriber(subscription.getSubscriber());
-            Constants.trends.remove(trend);
+            Constants.subscriptionMap.remove(trend);
+            Constants.subscriptionStatus.put(trend,false);
             Log.i("Publisher", "Successfully unsubscribed from \"" + trend + "\"");
         }
+    }
+
+    public void broadcastTrend ( String trend) {
+        Message msg = new Message();
+        msg.putMeta("newTrend",trend);
+        controlPub.send(msg);
+        Log.i(TAG,"The new Trend: "+ trend + " was sent to everyone on the control channel");
     }
 }
