@@ -47,7 +47,6 @@ public class ChatMainActivity extends ActionBarActivity {
 
     private ScrollView chatScrollView;
     private String trend;
-    private Discovery disc;
     private Node chatNode;
     private Subscriber controlSub;
     private Publisher controlPub;
@@ -78,7 +77,7 @@ public class ChatMainActivity extends ActionBarActivity {
 
         System.loadLibrary("umundoNativeJava_d");
 
-        disc = new Discovery(DiscoveryType.MDNS);
+        Discovery disc = new Discovery(DiscoveryType.MDNS);
         chatNode = new Node();
         disc.add(chatNode);
 
@@ -91,7 +90,7 @@ public class ChatMainActivity extends ActionBarActivity {
         chatScrollView = (ScrollView) findViewById(R.id.scrollViewChat);
 
         subSelection = (Spinner) findViewById(R.id.subscriptions_adapter);
-        trendsDropDownAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, Constants.trendsDropDownList);
+        trendsDropDownAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, Constants.trendsDropDownList);
 
 
         chatTextView.setText(chatTextView.getText().toString() +
@@ -294,11 +293,21 @@ public class ChatMainActivity extends ActionBarActivity {
             }
         }
         ArrayList<String> tempList = new ArrayList<>(Constants.subscriptionMap.keySet());
+/*=======
+        ArrayList<String> tempList = new ArrayList<>(Constants.trendsDropDownList); // to avoid java.util.ConcurrentModificationException
+        for(String newTrend : tempList) {
+            if (!Constants.trends.keySet().contains(newTrend)) {
+                subscribeToTrend(newTrend);
+            }
+        }
+        tempList = new ArrayList<>(Constants.trends.keySet());
+>>>>>>> 7b0a07a649af93fe1bbb113bc40f5a0f060e0c4f
         for (String trend : tempList) {
             if (!Constants.trendsDropDownList.contains(trend)) {
                 unsubscribeFromTrend(trend);
             }
         }
+<<<<<<< HEAD*/
         for (String s : Constants.trendsDropDownList) {
             Log.i(TAG, "drop down list item: " + s);
         }
