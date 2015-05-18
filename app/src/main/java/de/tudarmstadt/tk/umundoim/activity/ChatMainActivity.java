@@ -121,10 +121,21 @@ public class ChatMainActivity extends ActionBarActivity {
         /**
          * Broadcast new user present in order to receive updated trend lists
          */
-        Message controlMsg = new Message();
-        controlMsg.putMeta("newUser",Constants.userName);
-        controlPub.waitForSubscribers(1);
-        controlPub.send(controlMsg);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Message controlMsg = new Message();
+                controlMsg.putMeta("newUser", Constants.userName);
+                int a = controlPub.waitForSubscribers(0);
+                if ( a > 0 )
+                    controlPub.send(controlMsg);
+                else {
+                    controlPub.waitForSubscribers(1);
+                    controlPub.send(controlMsg);
+                }
+
+            }
+        }).start();
 
         initButtons();
     }
@@ -216,7 +227,7 @@ public class ChatMainActivity extends ActionBarActivity {
                         message.putMeta("updatedTrends",msg.getMeta("newUser"));
                         message.putMeta("channel",pair.getKey() );
                         controlPub.send(message);
-                        Log.i(CONTROLTAG, "New trend:  "+ pair.getValue() + " was sent to the new user");
+                        Log.i(CONTROLTAG, "New trend:  "+ pair.getKey() + " was sent to the new user");
                     }
                 }
             }
@@ -286,31 +297,17 @@ public class ChatMainActivity extends ActionBarActivity {
 
     @Override
     protected void onResume() {
+
         ArrayList<String> tempSet = new ArrayList<>(Constants.trendsDropDownList); // to avoid java.util.ConcurrentModificationException
         for(String newTrend : tempSet) {
             if (!Constants.subscriptionMap.keySet().contains(newTrend)) {
                 subscribeToTrend(newTrend);
             }
         }
-        ArrayList<String> tempList = new ArrayList<>(Constants.subscriptionMap.keySet());
-/*=======
-        ArrayList<String> tempList = new ArrayList<>(Constants.trendsDropDownList); // to avoid java.util.ConcurrentModificationException
-        for(String newTrend : tempList) {
-            if (!Constants.trends.keySet().contains(newTrend)) {
-                subscribeToTrend(newTrend);
-            }
-        }
-        tempList = new ArrayList<>(Constants.trends.keySet());
->>>>>>> 7b0a07a649af93fe1bbb113bc40f5a0f060e0c4f
-        for (String trend : tempList) {
-            if (!Constants.trendsDropDownList.contains(trend)) {
-                unsubscribeFromTrend(trend);
-            }
-        }
-<<<<<<< HEAD*/
+       /* ArrayList<String> tempList = new ArrayList<>(Constants.subscriptionMap.keySet());
         for (String s : Constants.trendsDropDownList) {
             Log.i(TAG, "drop down list item: " + s);
-        }
+        }*/
         /**
          * In case the user added a new Trend; we let everyone know of it
          */
@@ -321,6 +318,7 @@ public class ChatMainActivity extends ActionBarActivity {
         Constants.newTrends = new ArrayList<>(); //Empty the list
 
         subSelection.setAdapter(trendsDropDownAdapter);
+
         super.onResume();
     }
 
